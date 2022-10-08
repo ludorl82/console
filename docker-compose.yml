@@ -1,0 +1,10 @@
+version: "3.3"
+services:
+  console:
+    image: ludorl82/console:latest
+    ports:
+      - "2222:22"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "${HOME}:${HOME}"
+    restart: always
