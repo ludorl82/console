@@ -33,7 +33,8 @@ RUN locale-gen fr_FR.UTF-8
 RUN update-locale LANG=fr_FR.UTF-8
 
 # Create user
-RUN useradd -rm -d /home/$USER -s /usr/bin/zsh -G docker -u 1000 -g 1000 -p "$(openssl passwd -1 ubuntu)" $USER
+RUN useradd -rm -d /home/$USER -s /usr/bin/zsh -G docker -u 1000 -p "$(openssl passwd -1 ubuntu)" $USER
+RUN groupmod -g 1000 $USER
 RUN gpasswd -a $USER sudo
 
 # Install node and npm
