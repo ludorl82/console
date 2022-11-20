@@ -9,6 +9,7 @@ RUN apt update && export DEBIAN_FRONTEND=noninteractive && export TZ=America/Mon
   apt install -y software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
                  open-vm-tools libnss-ldap libpam-ldap ldap-utils jq exuberant-ctags sudo \
                  curl golang git iftop mtr telnet wget language-pack-en language-pack-fr && \
+                 iputils-ping && \
   add-apt-repository ppa:neovim-ppa/stable && \
   apt upgrade -y && apt install -y neovim
 
@@ -35,6 +36,7 @@ RUN update-locale LANG=fr_FR.UTF-8
 # Create user
 RUN useradd -rm -d /home/$USER -s /usr/bin/zsh -G docker -u 1000 -p "$(openssl passwd -1 ubuntu)" $USER
 RUN groupmod -g 1000 $USER
+RUN chown -R $USER: /home/$USER
 RUN gpasswd -a $USER sudo
 
 # Install node and npm
