@@ -8,7 +8,7 @@ RUN echo User is: $USER
 RUN apt update && export DEBIAN_FRONTEND=noninteractive && export TZ=America/Montreal && \
   apt install -y software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
                  open-vm-tools libnss-ldap libpam-ldap ldap-utils jq exuberant-ctags sudo \
-                 curl golang git iftop mtr telnet wget language-pack-en language-pack-fr && \
+                 curl golang git iftop mtr telnet wget language-pack-en language-pack-fr \
                  iputils-ping
 
 # Compile neovim & install nvim
