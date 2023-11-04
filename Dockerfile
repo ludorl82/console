@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ARG USER
 
@@ -9,9 +9,14 @@ RUN apt update && export DEBIAN_FRONTEND=noninteractive && export TZ=America/Mon
   apt install -y software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
                  open-vm-tools libnss-ldap libpam-ldap ldap-utils jq exuberant-ctags sudo \
                  curl golang git iftop mtr telnet wget language-pack-en language-pack-fr && \
-                 iputils-ping && \
-  add-apt-repository ppa:neovim-ppa/stable && \
-  apt upgrade -y && apt install -y neovim
+                 iputils-ping
+
+# Compile neovim & install nvim
+RUN git clone https://github.com/neovim/neovim.git && \
+  cd neovim && \
+  git checkout stable && \
+  make CMAKE_BUILD_TYPE=Release && \
+  make install
 
 # Install docker
 RUN apt -y install curl
