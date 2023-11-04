@@ -12,6 +12,7 @@ RUN apt update && export DEBIAN_FRONTEND=noninteractive && export TZ=America/Mon
                  iputils-ping
 
 # Compile neovim & install nvim
+RUN apt install -y build-essential gcc cmake gettext
 RUN git clone https://github.com/neovim/neovim.git && \
   cd neovim && \
   git checkout stable && \
