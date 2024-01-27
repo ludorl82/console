@@ -75,7 +75,7 @@ WORKDIR /home/$USER
 RUN rm -fr /tmp/tmux
 
 # Install tmuxinator
-RUN gem install tmuxinator
+RUN apt install tmuxinator -y
 
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/install_ssh.sh)"
 
