@@ -1,69 +1,98 @@
 FROM ubuntu:24.04
 
-# Install packages
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive && export TZ=America/Montreal && \
-  apt-get install -y software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
-                 jq exuberant-ctags sudo curl language-pack-en language-pack-fr iputils-ping xclip \
-                 curl golang git iftop mtr telnet wget tzdata
+ARG DEBIAN_FRONTEND=noninteractive
+ARG TZ=America/Montreal
+ARG USER=ubuntu
+ARG PASS=ubuntu
+ARG UID=1000
+ARG GID=1000
 
-# Compile neovim & install nvim
-RUN apt-get install -y build-essential cmake gettext ninja-build unzip
-RUN git clone https://github.com/neovim/neovim.git && \
-  cd neovim && \
-  git checkout stable && \
-  make CMAKE_BUILD_TYPE=Release && \
-  make install && \
-  cd .. && \
-  rm -rf neovim
+# Base setup: packages, timezone, locale
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
+      jq exuberant-ctags sudo curl language-pack-en language-pack-fr iputils-ping xclip \
+      golang git iftop mtr telnet wget tzdata ca-certificates gnupg; \
+    ln -fs /usr/share/zoneinfo/"$TZ" /etc/localtime; \
+    echo "$TZ" > /etc/timezone; \
+    dpkg-reconfigure -f noninteractive tzdata; \
+    locale-gen en_US en_US.UTF-8 fr_FR fr_FR.UTF-8; \
+    update-locale LANG=fr_FR.UTF-8; \
+    rm -rf /var/lib/apt/lists/*
 
-# Install docker
-RUN apt-get -y install docker.io
+# Build dependencies for Neovim, then compile and install
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends build-essential cmake gettext ninja-build unzip git; \
+    git clone https://github.com/neovim/neovim.git; \
+    cd neovim; \
+    git checkout stable; \
+    make CMAKE_BUILD_TYPE=Release; \
+    make install; \
+    cd ..; \
+    rm -rf neovim; \
+    apt-get purge -y build-essential cmake gettext ninja-build unzip; \
+    apt-get autoremove -y; \
+    rm -rf /var/lib/apt/lists/*
+
+# Docker engine (from Ubuntu repo)
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends docker.io; \
+    rm -rf /var/lib/apt/lists/*
 
 # Ensure docker group exists
-RUN getent group docker || groupadd docker
+RUN set -eux; \
+    getent group docker || groupadd docker
 
-# Set timezone
-RUN rm -rf /etc/localtime
-RUN ln -s /usr/share/zoneinfo/America/Montreal /etc/localtime
+# Create or modify user and group
+# - Create group with GID if missing
+# - Create user if missing; otherwise modify existing
+# - Set shell, home, UID/GID, add to docker & sudo, set password
+RUN set -eux; \
+    if ! getent group "$USER" >/dev/null; then groupadd -g "$GID" "$USER"; fi; \
+    if getent passwd "$USER" >/dev/null; then \
+      usermod -d /home/"$USER" -s /usr/bin/zsh -u "$UID" -g "$GID" -a -G docker,sudo "$USER"; \
+    else \
+      useradd -m -d /home/"$USER" -s /usr/bin/zsh -u "$UID" -g "$GID" -G docker,sudo "$USER"; \
+    fi; \
+    mkdir -p /home/"$USER"; \
+    chown -R "$USER":"$USER" /home/"$USER"; \
+    echo "$USER:$PASS" | chpasswd
 
-# Set locale
-RUN locale-gen en_US
-RUN locale-gen en_US.UTF-8
-RUN locale-gen fr_FR
-RUN locale-gen fr_FR.UTF-8
-RUN update-locale LANG=fr_FR.UTF-8
-
-# Create user
-RUN useradd -rm -d /home/ubuntu -s /usr/bin/zsh -G docker -u 1000 -p "$(openssl passwd -1 ubuntu)" ubuntu
-RUN groupmod -g 1000 ubuntu
-RUN chown -R ubuntu: /home/ubuntu
-RUN gpasswd -a ubuntu sudo
-
-# Install node and npm (version 22)
-RUN set -uex; \
+# Node.js 22.x (Nodesource)
+RUN set -eux; \
     apt-get update; \
-    apt-get install -y ca-certificates curl gnupg; \
     mkdir -p /etc/apt/keyrings; \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-     | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg; \
-    NODE_MAJOR=22; \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" \
-     > /etc/apt/sources.list.d/nodesource.list; \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg; \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
+      > /etc/apt/sources.list.d/nodesource.list; \
     apt-get -qy update; \
-    apt-get -qy install nodejs;
-RUN npm i -g bash-language-server && \
-  npm install -g yarn
+    apt-get -qy install --no-install-recommends nodejs; \
+    rm -rf /var/lib/apt/lists/*
 
-# Install tmux from Ubuntu repository (Ubuntu 24.04 has tmux 3.4)
-RUN apt-get update && apt-get install -y tmux
+# Global npm tools
+RUN set -eux; \
+    npm i -g bash-language-server yarn
 
-# Install tmuxinator
-RUN apt-get install tmuxinator -y
+# tmux and tmuxinator
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends tmux tmuxinator; \
+    rm -rf /var/lib/apt/lists/*
 
+# Optional: install SSH helper script (external)
+# Consider pinning or verifying this script before running in production
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/install_ssh.sh)"
 
-# Install OpenSSH server
-RUN mkdir /run/sshd
-RUN ssh-keygen -A
+# OpenSSH server setup
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends openssh-server; \
+    mkdir -p /run/sshd; \
+    ssh-keygen -A; \
+    rm -rf /var/lib/apt/lists/*
 
+# Default command
 CMD ["/usr/sbin/sshd", "-D", "-o", "ListenAddress=0.0.0.0"]
