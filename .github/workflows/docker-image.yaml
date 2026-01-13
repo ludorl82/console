@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag console:$(date +%s) --build-arg USER=$GITHUB_REPOSITORY_OWNER
+      run: docker build . --file Dockerfile --tag console:$(date +%s)
