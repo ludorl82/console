@@ -1,0 +1,21 @@
+services:
+  console:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USER: ${USER}
+    image: ludorl82/console:latest
+    ports:
+      - "2222:22"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "${HOME}:/home/ubuntu"
+    restart: always
+
+networks:
+  default:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:1::/80
