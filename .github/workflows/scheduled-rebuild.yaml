@@ -1,19 +1,33 @@
-name: Scheduled security rebuild
+name: Scheduled security patch release
 
 on:
   schedule:
     - cron: '0 3 * * 0'   # weekly, Sunday 03:00 UTC
   workflow_dispatch: {}    # allow manual trigger too
 
+permissions:
+  contents: write
+
 jobs:
-  rebuild:
-    name: Rebuild and republish latest
+  patch-release:
+    name: Bump patch tag and rebuild
     runs-on: ubuntu-latest
     steps:
       - name: Check out main
         uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
+
+      # --tag-only: creates the git tag but not a GitHub Release, so this
+      # doesn't also trigger publish-image.yaml (that build is cached and
+      # would just replay stale layers -- this job does its own
+      # --pull/--no-cache build below instead, which actually applies fixes)
+      - name: Bump patch version (tag only)
+        id: bump
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .github/scripts/bump-tag.sh patch --tag-only
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -27,7 +41,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push (force-pull base image)
+      - name: Build and push (force-pull base image, no cache)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -35,4 +49,6 @@ jobs:
           pull: true          # force re-checking the registry for a newer ubuntu:24.04, ignore local/cached layers
           no-cache: true      # also skip layer cache for apt-get steps, so package upgrades actually apply
           push: true
-          tags: ludorl82/console:latest
+          tags: |
+            ludorl82/console:latest
+            ludorl82/console:${{ steps.bump.outputs.new_tag }}
