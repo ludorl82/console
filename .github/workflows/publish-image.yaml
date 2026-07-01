@@ -8,7 +8,10 @@ jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
-    
+    # Only publish releases cut from main -- a tag/release created from
+    # dev or any other branch should not reach Docker Hub.
+    if: github.event.release.target_commitish == 'main'
+
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
