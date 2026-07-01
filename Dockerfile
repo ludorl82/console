@@ -86,7 +86,16 @@ RUN set -eux; \
 
 # Optional: install SSH helper script (external)
 # Consider pinning or verifying this script before running in production
-RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/install_ssh.sh)"
+#
+# Downloaded to a real file (not piped into `bash -c`) because install_ssh.sh
+# sources a sibling script via `dirname "${BASH_SOURCE[0]}"`, which requires
+# an actual file path to resolve.
+RUN set -eux; \
+    mkdir -p /tmp/shell-scripts; \
+    curl -fsSL -o /tmp/shell-scripts/install_ssh.sh https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/install_ssh.sh; \
+    curl -fsSL -o /tmp/shell-scripts/upgrade_shell_functions.sh https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/upgrade_shell_functions.sh; \
+    bash /tmp/shell-scripts/install_ssh.sh; \
+    rm -rf /tmp/shell-scripts
 
 # OpenSSH server setup
 RUN set -eux; \
