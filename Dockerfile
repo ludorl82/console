@@ -3,6 +3,7 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=America/Montreal
 ARG USER=ubuntu
+ARG PASS=ubuntu
 ARG UID=1000
 ARG GID=1000
 
@@ -57,11 +58,8 @@ RUN set -eux; \
       useradd -m -d /home/"$USER" -s /usr/bin/zsh -u "$UID" -g "$GID" -G docker,sudo "$USER"; \
     fi; \
     mkdir -p /home/"$USER"; \
-    chown -R "$USER":"$USER" /home/"$USER"
-
-# Retain USER at runtime (ARGs aren't available in the running container) so
-# entrypoint.sh knows which account to set the password for.
-ENV CONSOLE_USER=${USER}
+    chown -R "$USER":"$USER" /home/"$USER"; \
+    echo "$USER:$PASS" | chpasswd
 
 # Node.js 22.x (Nodesource)
 RUN set -eux; \
@@ -95,10 +93,6 @@ RUN set -eux; \
     mkdir -p /run/sshd; \
     ssh-keygen -A; \
     rm -rf /var/lib/apt/lists/*
-
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Default command
 CMD ["/usr/sbin/sshd", "-D", "-o", "ListenAddress=0.0.0.0"]

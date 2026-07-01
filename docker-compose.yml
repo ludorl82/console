@@ -6,13 +6,11 @@ services:
       args:
         USER: ${USER}
     image: ludorl82/console:latest
-    environment:
-      - PASS=${PASS:-}
     ports:
       - "2222:22"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "${HOME}:${HOME}"
+      - "${HOME}:/home/ubuntu"
     restart: always
 
 networks:
