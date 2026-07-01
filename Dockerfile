@@ -3,13 +3,16 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=America/Montreal
 ARG USER=ubuntu
-ARG PASS=ubuntu
 ARG UID=1000
 ARG GID=1000
 
 # Base setup: packages, timezone, locale
+# apt-get upgrade here (not just install) so already-present base-image
+# packages pick up any security fixes published since ubuntu:24.04 was
+# last built, not just the packages we explicitly add below.
 RUN set -eux; \
     apt-get update; \
+    apt-get upgrade -y; \
     apt-get install -y --no-install-recommends \
       software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
       jq exuberant-ctags sudo curl language-pack-en language-pack-fr iputils-ping xclip \
@@ -58,8 +61,11 @@ RUN set -eux; \
       useradd -m -d /home/"$USER" -s /usr/bin/zsh -u "$UID" -g "$GID" -G docker,sudo "$USER"; \
     fi; \
     mkdir -p /home/"$USER"; \
-    chown -R "$USER":"$USER" /home/"$USER"; \
-    echo "$USER:$PASS" | chpasswd
+    chown -R "$USER":"$USER" /home/"$USER"
+
+# Retain USER at runtime (ARGs aren't available in the running container) so
+# entrypoint.sh knows which account to set the password for.
+ENV CONSOLE_USER=${USER}
 
 # Node.js 22.x (Nodesource)
 RUN set -eux; \
@@ -84,7 +90,16 @@ RUN set -eux; \
 
 # Optional: install SSH helper script (external)
 # Consider pinning or verifying this script before running in production
-RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/install_ssh.sh)"
+#
+# Downloaded to a real file (not piped into `bash -c`) because install_ssh.sh
+# sources a sibling script via `dirname "${BASH_SOURCE[0]}"`, which requires
+# an actual file path to resolve.
+RUN set -eux; \
+    mkdir -p /tmp/shell-scripts; \
+    curl -fsSL -o /tmp/shell-scripts/install_ssh.sh https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/install_ssh.sh; \
+    curl -fsSL -o /tmp/shell-scripts/upgrade_shell_functions.sh https://raw.githubusercontent.com/ludorl82/.shell-scripts/master/scripts/upgrade_shell_functions.sh; \
+    bash /tmp/shell-scripts/install_ssh.sh; \
+    rm -rf /tmp/shell-scripts
 
 # OpenSSH server setup
 RUN set -eux; \
@@ -93,6 +108,10 @@ RUN set -eux; \
     mkdir -p /run/sshd; \
     ssh-keygen -A; \
     rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Default command
 CMD ["/usr/sbin/sshd", "-D", "-o", "ListenAddress=0.0.0.0"]
