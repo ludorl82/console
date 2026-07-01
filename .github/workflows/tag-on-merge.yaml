@@ -17,7 +17,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Releases created with the default GITHUB_TOKEN don't trigger other
+      # workflows (anti-recursion safeguard), so publish-image.yaml would
+      # never fire from this. RELEASE_TOKEN is a PAT with contents: write
+      # on this repo -- a release created with it triggers normally.
       - name: Bump minor version and create release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: .github/scripts/bump-tag.sh minor
