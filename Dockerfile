@@ -7,8 +7,12 @@ ARG UID=1000
 ARG GID=1000
 
 # Base setup: packages, timezone, locale
+# apt-get upgrade here (not just install) so already-present base-image
+# packages pick up any security fixes published since ubuntu:24.04 was
+# last built, not just the packages we explicitly add below.
 RUN set -eux; \
     apt-get update; \
+    apt-get upgrade -y; \
     apt-get install -y --no-install-recommends \
       software-properties-common zsh python3-pip rsync bind9-dnsutils ruby-full \
       jq exuberant-ctags sudo curl language-pack-en language-pack-fr iputils-ping xclip \
