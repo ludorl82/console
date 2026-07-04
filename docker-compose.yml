@@ -3,15 +3,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        USER: ${USER}
     image: ludorl82/console:latest
     environment:
       - PASS=${PASS:-}
     ports:
       - "2222:22"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      # docker-outside-of-docker's docker-init.sh (see .devcontainer/devcontainer.json)
+      # looks for the host socket at docker-host.sock and reconciles the
+      # container's docker group GID against it before re-exposing it at
+      # the conventional /var/run/docker.sock path inside the container.
+      - "/var/run/docker.sock:/var/run/docker-host.sock"
       - "${HOME}:${HOME}"
     restart: always
 

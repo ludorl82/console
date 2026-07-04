@@ -3,8 +3,6 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TZ=America/Montreal
 ARG USER=ubuntu
-ARG UID=1000
-ARG GID=1000
 
 # Base setup: packages, timezone, locale
 # apt-get upgrade here (not just install) so already-present base-image
@@ -41,29 +39,12 @@ RUN set -eux; \
     ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim; \
     rm -f /tmp/nvim.tar.gz
 
-# Docker engine (from Ubuntu repo)
-RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends docker.io; \
-    rm -rf /var/lib/apt/lists/*
-
-# Ensure docker group exists
-RUN set -eux; \
-    getent group docker || groupadd docker
-
-# Create or modify user and group
-# - Create group with GID if missing
-# - Create user if missing; otherwise modify existing
-# - Set shell, home, UID/GID, add to docker & sudo, set password
-RUN set -eux; \
-    if ! getent group "$USER" >/dev/null; then groupadd -g "$GID" "$USER"; fi; \
-    if getent passwd "$USER" >/dev/null; then \
-      usermod -d /home/"$USER" -s /usr/bin/zsh -u "$UID" -g "$GID" -a -G docker,sudo "$USER"; \
-    else \
-      useradd -m -d /home/"$USER" -s /usr/bin/zsh -u "$UID" -g "$GID" -G docker,sudo "$USER"; \
-    fi; \
-    mkdir -p /home/"$USER"; \
-    chown -R "$USER":"$USER" /home/"$USER"
+# Docker CLI (socket access to the host daemon) and the non-root user itself
+# are provisioned by devcontainer Features -- see .devcontainer/devcontainer.json
+# (docker-outside-of-docker + common-utils). Building this Dockerfile directly
+# with `docker build`/`docker compose build` (bypassing the devcontainer CLI)
+# skips those Features and produces a root-only image with no docker CLI;
+# use `devcontainer build` for a full image.
 
 # Retain USER at runtime (ARGs aren't available in the running container) so
 # entrypoint.sh knows which account to set the password for.

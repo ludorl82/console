@@ -3,7 +3,18 @@
 ## Building the Image
 
 ### Build for Local Architecture Only
-To build the image for your current architecture (ARM64 on Raspberry Pi 5, AMD64 on x86_64):
+The Docker CLI (socket access) and the non-root user are provisioned by
+devcontainer Features declared in `.devcontainer/devcontainer.json`, not by
+the Dockerfile itself. Build with the devcontainer CLI to get a complete
+image:
+```bash
+npx @devcontainers/cli build --workspace-folder . --image-name ludorl82/console:local
+```
+
+Plain `docker compose build` still works and is faster, but skips Features
+-- useful only for quickly checking that the base Dockerfile itself (locale,
+neovim, tmux/tmuxinator, Node, sshd) still builds. The resulting image has
+no docker CLI and stays root-only:
 ```bash
 docker compose build
 ```

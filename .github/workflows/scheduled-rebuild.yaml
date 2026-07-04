@@ -22,7 +22,7 @@ jobs:
       # --tag-only: creates the git tag but not a GitHub Release, so this
       # doesn't also trigger publish-image.yaml (that build is cached and
       # would just replay stale layers -- this job does its own
-      # --pull/--no-cache build below instead, which actually applies fixes)
+      # --no-cache build below instead, which actually applies fixes)
       - name: Bump patch version (tag only)
         id: bump
         env:
@@ -41,14 +41,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push (force-pull base image, no cache)
-        uses: docker/build-push-action@v6
+      # No cacheFrom/cacheTo (same as before this migration): this job
+      # already runs on a clean runner with nothing to reuse, and noCache
+      # forces every RUN layer (apt-get, etc.) to actually re-execute
+      # against whatever base image gets pulled fresh for this build.
+      - name: Build and push (no cache, so package upgrades actually apply)
+        uses: devcontainers/ci@v0.3
         with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          pull: true          # force re-checking the registry for a newer ubuntu:24.04, ignore local/cached layers
-          no-cache: true      # also skip layer cache for apt-get steps, so package upgrades actually apply
-          push: true
-          tags: |
-            ludorl82/console:latest
-            ludorl82/console:${{ steps.bump.outputs.new_tag }}
+          imageName: ludorl82/console
+          imageTag: latest,${{ steps.bump.outputs.new_tag }}
+          platform: linux/amd64,linux/arm64
+          push: always
+          noCache: true
