@@ -24,20 +24,22 @@ RUN set -eux; \
     update-locale LANG=fr_FR.UTF-8; \
     rm -rf /var/lib/apt/lists/*
 
-# Build dependencies for Neovim, then compile and install
+# Neovim: install the official prebuilt release tarball (arch-aware) instead
+# of compiling from source -- avoids a lengthy build-essential/cmake/ninja
+# compile on every image rebuild, especially costly for linux/arm64 under
+# QEMU emulation in the weekly no-cache scheduled rebuild.
 RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends build-essential cmake gettext ninja-build unzip git; \
-    git clone https://github.com/neovim/neovim.git; \
-    cd neovim; \
-    git checkout stable; \
-    make CMAKE_BUILD_TYPE=Release; \
-    make install; \
-    cd ..; \
-    rm -rf neovim; \
-    apt-get purge -y build-essential cmake gettext ninja-build unzip; \
-    apt-get autoremove -y; \
-    rm -rf /var/lib/apt/lists/*
+    ARCH=$(dpkg --print-architecture); \
+    case "$ARCH" in \
+      amd64) NVIM_ARCH=x86_64 ;; \
+      arm64) NVIM_ARCH=arm64 ;; \
+      *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/neovim/neovim/releases/latest/download/nvim-linux-${NVIM_ARCH}.tar.gz" -o /tmp/nvim.tar.gz; \
+    mkdir -p /opt/nvim; \
+    tar -xzf /tmp/nvim.tar.gz -C /opt/nvim --strip-components=1; \
+    ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim; \
+    rm -f /tmp/nvim.tar.gz
 
 # Docker engine (from Ubuntu repo)
 RUN set -eux; \
