@@ -2,9 +2,9 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -13,19 +13,19 @@ jobs:
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4
-    
+
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
-    
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker image (multi-platform)
-      uses: docker/build-push-action@v6
+
+    - name: Build devcontainer image (multi-platform, validate only)
+      uses: devcontainers/ci@v0.3
       with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        push: false
-        tags: console:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        imageName: console
+        imageTag: test
+        platform: linux/amd64,linux/arm64
+        push: never
+        cacheFrom: type=gha
+        cacheTo: type=gha,mode=max
